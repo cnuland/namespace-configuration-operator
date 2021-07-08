@@ -255,6 +255,25 @@ helm repo update
 helm upgrade namespace-configuration-operator namespace-configuration-operator/namespace-configuration-operator
 ```
 
+## Metrics
+
+Prometheus compatible metrics are exposed by the Operator and can be integrated into OpenShift's default cluster monitoring. To enable OpenShift cluster monitoring, label the namespace the operator is deployed in with the label `openshift.io/cluster-monitoring="true"`.
+
+```shell
+oc label namespace <namespace> openshift.io/cluster-monitoring="true"
+```
+
+### Testing metrics
+
+```sh
+export operatorNamespace=namespace-configuration-operator-local # or namespace-configuration-operator
+oc label namespace ${operatorNamespace} openshift.io/cluster-monitoring="true"
+oc rsh -n openshift-monitoring -c prometheus prometheus-k8s-0 /bin/bash
+export operatorNamespace=namespace-configuration-operator-local # or namespace-configuration-operator
+curl -v -s -k -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" https://namespace-configuration-operator-controller-manager-metrics.${operatorNamespace}.svc.cluster.local:8443/metrics
+exit
+```
+
 ## Development
 
 ### Running the operator locally
@@ -263,7 +282,7 @@ helm upgrade namespace-configuration-operator namespace-configuration-operator/n
 make install
 oc new-project namespace-configuration-operator-local
 kustomize build ./config/local-development | oc apply -f - -n namespace-configuration-operator-local
-export token=$(oc serviceaccounts get-token 'namespace-configuration-operator-controller-manager' -n namespace-configuration-operator-local)
+export token=$(oc serviceaccounts get-token 'namespace-configuration-controller-manager' -n namespace-configuration-operator-local)
 oc login --token ${token}
 make run ENABLE_WEBHOOKS=false
 ```
@@ -274,7 +293,7 @@ Define an image and tag. For example...
 
 ```shell
 export imageRepository="quay.io/redhat-cop/namespace-configuration-operator"
-export imageTag="$(git describe --tags --abbrev=0)" # grabs the most recent git tag, which should match the image tag
+export imageTag="$(git -c 'versionsort.suffix=-' ls-remote --exit-code --refs --sort='version:refname' --tags https://github.com/redhat-cop/namespace-configuration-operator.git '*.*.*' | tail --lines=1 | cut --delimiter='/' --fields=3)"
 ```
 
 Deploy chart...
@@ -308,7 +327,7 @@ make bundle IMG=quay.io/$repo/namespace-configuration-operator:latest
 operator-sdk bundle validate ./bundle --select-optional name=operatorhub
 make bundle-build BUNDLE_IMG=quay.io/$repo/namespace-configuration-operator-bundle:latest
 docker login quay.io/$repo/namespace-configuration-operator-bundle
-podman push quay.io/$repo/namespace-configuration-operator-bundle:latest
+docker push quay.io/$repo/namespace-configuration-operator-bundle:latest
 operator-sdk bundle validate quay.io/$repo/namespace-configuration-operator-bundle:latest --select-optional name=operatorhub
 oc new-project namespace-configuration-operator
 operator-sdk cleanup namespace-configuration-operator -n namespace-configuration-operator
