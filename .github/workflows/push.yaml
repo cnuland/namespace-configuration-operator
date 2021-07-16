@@ -196,7 +196,7 @@ jobs:
   release-operatorhub:
     name: Relase to OperatorHub via community-operators (We don't actually commit in this case)
     runs-on: ubuntu-latest
-    if: "startsWith(github.ref, 'refs/tags')"
+ #   if: "startsWith(github.ref, 'refs/tags')"
     needs: ["build"]
     steps:
 
