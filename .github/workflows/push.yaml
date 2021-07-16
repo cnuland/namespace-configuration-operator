@@ -237,7 +237,6 @@ jobs:
         run: |
           echo first_release=$([[ ! -d "./tmp/community-operators/community-operators/$(basename $GITHUB_REPOSITORY)" ]] && echo 'true' || echo 'false') >> $GITHUB_ENV
           echo $first_release
-
       
       - name: create and copy bundle to community operators
         shell: bash
@@ -248,6 +247,12 @@ jobs:
           mkdir -p ./tmp/community-operators/community-operators/$(basename $GITHUB_REPOSITORY)/${VERSION}
           /bin/cp -v -R ./bundle/* ./tmp/community-operators/community-operators/$(basename $GITHUB_REPOSITORY)/${VERSION}
           /bin/cp -v -R ./config/community-operators/* ./tmp/community-operators/community-operators/$(basename $GITHUB_REPOSITORY)         
+
+      - name: process bundle for disconnected support
+        uses: redhat-cop/github-actions/disconnected-csv@master
+        with:
+          CSV_FILE: bundle/manifests/namespace-configuration-operator.clusterserviceversion.yaml
+          TAGS_TO_DIGESTS: ${OPERATOR_IMAGE_TAG}
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v3
